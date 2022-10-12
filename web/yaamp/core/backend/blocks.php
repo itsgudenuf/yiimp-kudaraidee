@@ -14,8 +14,7 @@ function BackendBlockNew($coin, $db_block)
 		debuglog("Shared Mining Found Block : $coin->id height $db_block->height with $db_block->userid");
 
 		//Clear Share Solo Miner before calc
-		$solo_workers = getdbolist('db_workers',"algo=:algo and password like '%m=solo%'", 
-				array(':algo'=>$db_block->algo));
+		$solo_workers = getdbolist('db_workers',"algo=:algo and password like '%m=solo%'", array(':algo'=>$coin->algo));
 	
 		foreach ($solo_workers as $solo_worker)
 		{
@@ -25,7 +24,7 @@ function BackendBlockNew($coin, $db_block)
 				
 			dborun("DELETE FROM shares WHERE algo=:algo AND workerid=:workerid AND $sqlCond",array(':algo'=>$coin->algo,':workerid'=>$solo_worker->id));
 		}
-		
+
 		$sqlCond = "valid = 1";
 		if(!YAAMP_ALLOW_EXCHANGE) // only one coin mined
 			$sqlCond .= " AND coinid = ".intval($coin->id);
@@ -33,8 +32,8 @@ function BackendBlockNew($coin, $db_block)
 		$total_hash_power = dboscalar("SELECT SUM(difficulty) FROM shares WHERE $sqlCond AND algo=:algo", array(':algo'=>$coin->algo));
 		if(!$total_hash_power) return;
 
-		$list = dbolist("SELECT userid, SUM(difficulty) AS total FROM shares WHERE $sqlCond AND algo=:algo GROUP BY userid",
-				array(':algo'=>$coin->algo));
+		$list = dbolist("SELECT userid, SUM(difficulty) AS total FROM shares WHERE $sqlCond AND algo=:algo GROUP BY userid",array(':algo'=>$coin->algo));
+
 
 		foreach($list as $item)
 		{
@@ -67,24 +66,24 @@ function BackendBlockNew($coin, $db_block)
 			}
 			else	// immature
 				$earning->status = 0;
-		
+	
 			$ucoin = getdbo('db_coins', $user->coinid);
 			if(!YAAMP_ALLOW_EXCHANGE && $ucoin && $ucoin->algo != $coin->algo) {
 				debuglog($coin->symbol.": invalid earning for {$user->username}, user coin is {$ucoin->symbol}");
 				$earning->status = -1;
 			}
-		
+			
 			if (!$earning->save())
 				debuglog(__FUNCTION__.": Unable to insert earning!");
 
 			$user->last_earning = time();
 			$user->save();
-
+	
 			$db_block->solo = 0;
 			$db_block->save();
 		}
 	}
-	else
+	else if($is_solo)
 	{
 		debuglog("Solo Mining Found Block : $coin->id height $db_block->height with $db_block->userid");
 		
